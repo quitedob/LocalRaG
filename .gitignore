@@ -1,0 +1,238 @@
+# 文件路径: .gitignore
+# 本 .gitignore 用于忽略常见的操作系统、IDE 以及多种编程语言（Python、Java、Go、Node、C++、Vue 等）的临时文件和依赖文件
+
+############################
+# 操作系统相关
+############################
+# Windows 缓存文件
+Thumbs.db
+ehthumbs.db
+
+# macOS 缓存文件
+.DS_Store
+
+############################
+# 通用日志与临时文件
+############################
+# 日志文件
+*.log
+
+# 临时文件、缓存、备份
+*.tmp
+*.bak
+*.swp
+*~
+*.~??
+*.old
+*.orig
+
+# npm 缓存、调试日志
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+############################
+# IDE / 编辑器相关
+############################
+# VSCode
+.vscode/
+.vscode/*
+
+# IntelliJ IDEA / WebStorm / PhpStorm 等 JetBrains 系列
+*.iml
+.idea/
+*.iws
+*.ipr
+
+# Eclipse
+.metadata/
+*.classpath
+*.project
+*.settings/
+
+# Visual Studio (C++, C# 项目)
+*.vcxproj.user
+*.suo
+*.user
+*.ncb
+*.opensdf
+*.sdf
+*.cachefile
+*.ilk
+*.obj
+*.pch
+*.pdb
+*.ipch
+*.aps
+*.ncb
+*.psess
+*.vsp
+*.vspx
+*.tlog
+*.lastbuildstate
+*.userosscache
+
+############################
+# Python 相关
+############################
+# 虚拟环境
+venv/
+ENV/
+env/
+.env
+.venv/
+
+# 编译生成
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pipenv
+Pipfile.lock
+
+# Pytest
+.cache/
+.pytest_cache/
+
+# Mypy
+.mypy_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# 其他 Python 相关
+*.pyo
+*.pyd
+
+############################
+# Java 相关
+############################
+# Maven 构建目录
+target/
+
+# Gradle 构建目录
+build/
+.gradle/
+*.gradle
+!gradle-wrapper.jar
+
+# IntelliJ IDEA
+*.iml
+.idea/
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# NetBeans
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# Java 类文件
+*.class
+
+# 日志与输出
+hs_err_pid*
+
+############################
+# Node / Vue 相关
+############################
+# 依赖包目录
+node_modules/
+
+# 打包输出
+dist/
+build/
+
+# npm 缓存、锁文件（可根据项目需要保留或忽略）
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# 锁文件（如果希望忽略锁文件，可取消下面注释）
+# package-lock.json
+# yarn.lock
+
+############################
+# Go 相关
+############################
+# 可执行文件
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go 缓存
+vendor/
+Godeps/
+
+# Go 构建输出目录
+bin/
+obj/
+
+# Go 模块
+go.mod
+go.sum
+
+############################
+# C / C++ 相关
+############################
+# 对象文件
+*.o
+*.obj
+
+# 可执行文件
+*.exe
+*.out
+*.app
+
+# 库文件
+*.lib
+*.a
+*.so
+*.dylib
+
+# VSCode C++ 缓存
+*.VC.db
+*.VC.VC.opendb
+
+# 其他临时文件
+*.ilk
+*.pch
+*.pdb
+
+############################
+# Docker 相关
+############################
+# Docker 镜像和容器相关
+docker-compose.override.yml
+.env.*.local
+
+# Docker 临时文件
+*.stackdump
+
+############################
+# 其他常见忽略项
+############################
+# 打包档案
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# 系统缓存
+Thumbs.db
+.DS_Store
+
+# 个人配置文件
+*.local
+*.secret
+
+# 结束
