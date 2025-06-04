@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI心理咨询助手 (异步版)</title>
+    {# CDN Libraries CSS #}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet" />
+
+    {# --- Inline CSS Start --- #}
+    <style>
+        /* 文件路径: static/style.css (内容已内联, 同上一版) */
+        /* --- 主题变量 --- */
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f0f0f5;
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --accent-primary: #0071e3;
+            --accent-hover: #005bb5;
+            --border-color: #d2d2d7;
+            --danger-color: #d70015;
+            --danger-hover: #b00010;
+            --success-color: #28a745;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --radius: 10px; /* 稍微减小圆角 */
+            --input-bg: #f8f8fa; /* 输入框背景 */
+            --code-bg: #272822; /* Okaidia 主题的代码块背景色 */
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; /* 使用 Inter 或系统默认 */
+        }
+
+        body.dark-mode {
+            --bg-primary: #1c1c1e; /* 深灰背景 */
+            --bg-secondary: #000000; /* 纯黑背景 */
+            --text-primary: #f5f5f7; /* 亮白文字 */
+            --text-secondary: #8e8e93; /* 浅灰文字 */
+            --accent-primary: #0a84ff; /* 亮蓝色 */
+            --accent-hover: #349dff;
+            --border-color: #3a3a3c; /* 深色边框 */
+            --danger-color: #ff453a;
+            --danger-hover: #ff6b61;
+            --success-color: #30d158;
+            --shadow: 0 4px 15px rgba(0, 0, 0, 0.3); /* 深色阴影 */
+            --input-bg: #2c2c2e; /* 深色输入框背景 */
+            --code-bg: #2c2c2e; /* 深色模式下的代码背景 */
+            /* 确保在 dark-mode 下也设置基础颜色 */
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        /* --- 基础样式 --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--font-family); }
+        body { background-color: var(--bg-secondary); color: var(--text-primary); line-height: 1.6; padding: 15px; max-width: 900px; margin: 20px auto; transition: background-color 0.3s, color 0.3s; }
+        button, select, input, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+        button { cursor: pointer; border: none; transition: background-color 0.2s, opacity 0.2s, color 0.2s; }
+        textarea { outline: none; background-color: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 10px 12px; }
+        select { cursor: pointer; background-color: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 10px 12px; }
+        input[type="text"], input[type="password"] { background-color: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 10px 12px; }
+
+        /* --- Header --- */
+        header { text-align: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); position: relative; }
+        h1 { font-size: 26px; font-weight: 600; margin-bottom: 6px; color: var(--text-primary); }
+        .subtitle { color: var(--text-secondary); font-size: 15px; }
+        #themeToggle { position: absolute; top: 10px; right: 0; background: none; border: none; font-size: 24px; cursor: pointer; padding: 5px; color: var(--text-secondary); }
+        #themeToggle:hover { color: var(--text-primary); }
+
+        /* --- Main Layout --- */
+        .main-container { display: flex; flex-direction: column; gap: 15px; }
+
+        /* --- Top Control Bar --- */
+        .top-control-bar { background-color: var(--bg-primary); border-radius: var(--radius); padding: 10px 15px; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; }
+        .top-control-bar .button-group button { background-color: var(--bg-primary); color: var(--accent-primary); padding: 8px 12px; border-radius: var(--radius); font-size: 14px; font-weight: 500; border: 1px solid transparent; margin-left: 8px; }
+        body.dark-mode .top-control-bar .button-group button { background-color: var(--bg-primary); }
+        .top-control-bar .button-group button.icon-button { font-size: 20px; padding: 6px 8px; }
+        .top-control-bar .button-group button:hover { background-color: var(--input-bg); border-color: var(--border-color); color: var(--accent-hover); }
+        .top-control-bar .button-group button.danger { color: var(--danger-color); }
+        body.dark-mode .top-control-bar .button-group button.danger { color: var(--danger-color); }
+        .top-control-bar .button-group button.danger:hover { background-color: var(--danger-color); color: white; border-color: transparent; }
+
+        /* --- Chat Section --- */
+        .chat-section { background-color: var(--bg-primary); border-radius: var(--radius); padding: 15px; box-shadow: var(--shadow); display: flex; flex-direction: column; height: calc(75vh - 150px); min-height: 300px; overflow: hidden; }
+        .chat-history { flex-grow: 1; overflow-y: auto; margin-bottom: 15px; padding: 10px 5px; display: flex; flex-direction: column; gap: 12px; }
+
+        /* --- Messages --- */
+        .message { padding: 10px 14px; border-radius: 18px; max-width: 85%; word-wrap: break-word; line-height: 1.5; font-size: 15px; position: relative; width: fit-content; min-width: 40px; }
+        .message.user { background-color: var(--accent-primary); color: white; border-bottom-right-radius: 6px; align-self: flex-end; }
+        .message.assistant { background-color: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-color); border-bottom-left-radius: 6px; align-self: flex-start; }
+        .message.assistant .content-wrapper { line-height: 1.6; }
+        .message.assistant .content-wrapper p { margin-bottom: 0.8em; }
+        .message.assistant .content-wrapper ul, .message.assistant .content-wrapper ol { margin-left: 1.5em; margin-bottom: 0.8em; }
+        .message.assistant .content-wrapper li { margin-bottom: 0.3em; }
+        .message.assistant .content-wrapper strong { font-weight: 600; }
+        .message.assistant .content-wrapper em { font-style: italic; }
+        .message.assistant .content-wrapper code { background-color: var(--bg-secondary); padding: 0.2em 0.4em; border-radius: 4px; font-size: 0.9em; font-family: monospace; border: 1px solid var(--border-color); color: var(--text-secondary); }
+        body.dark-mode .message.assistant .content-wrapper code { background-color: var(--bg-primary); color: var(--text-secondary); }
+        .message.assistant .content-wrapper pre { background-color: var(--code-bg) !important; color: #f8f8f2; padding: 1em; border-radius: var(--radius); overflow-x: auto; margin: 0.8em 0; border: 1px solid var(--border-color); }
+        .message.assistant .content-wrapper pre code { background: none !important; padding: 0; border: none; font-size: 0.85em; line-height: 1.5; color: inherit; text-shadow: none; }
+        body.dark-mode .message.assistant .content-wrapper pre { color: #f5f5f7; border-color: #555; }
+        .message.assistant .content-wrapper blockquote { border-left: 4px solid var(--border-color); padding-left: 1em; margin: 0.8em 0; color: var(--text-secondary); font-style: italic; }
+        .message.assistant .content-wrapper table { border-collapse: collapse; margin: 1em 0; width: auto; border: 1px solid var(--border-color); font-size: 0.95em; }
+        .message.assistant .content-wrapper th, .message.assistant .content-wrapper td { border: 1px solid var(--border-color); padding: 0.5em 0.8em; text-align: left; }
+        .message.assistant .content-wrapper th { background-color: var(--input-bg); font-weight: 600; }
+        .katex { font-size: 1.1em; }
+        .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.5em 0; }
+        .message.system, .message.file_upload { background-color: transparent; color: var(--text-secondary); font-size: 0.85em; text-align: center; align-self: center; width: auto; max-width: 90%; margin: 10px 0; padding: 5px 10px; border: none; border-top: 1px dashed var(--border-color); border-bottom: 1px dashed var(--border-color); border-radius: 0; }
+        .message.assistant.error-message-box { background-color: #f8d7da !important; border-color: #f5c6cb !important; color: #721c24 !important; border-radius: var(--radius); align-self: flex-start; width: fit-content; border-bottom-left-radius: 6px; }
+        body.dark-mode .message.assistant.error-message-box { background-color: #5c2b2f !important; border-color: #e67e86 !important; color: #f5c6cb !important; }
+
+        /* --- Input Area --- */
+        .input-area-container { display: flex; gap: 10px; align-items: flex-end; padding-top: 15px; border-top: 1px solid var(--border-color); }
+        .input-area-container textarea { flex-grow: 1; font-size: 15px; resize: none; min-height: 42px; max-height: 200px; overflow-y: auto; line-height: 1.5; }
+        .input-area-container button { background-color: var(--accent-primary); color: white; border-radius: var(--radius); padding: 0 18px; font-size: 15px; font-weight: 500; height: 42px; flex-shrink: 0; align-self: flex-end; }
+        .input-area-container button:hover { background-color: var(--accent-hover); }
+        .input-area-container button:disabled { background-color: var(--accent-primary); opacity: 0.6; cursor: not-allowed; }
+
+        /* --- Modals --- */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-content { background-color: var(--bg-primary); margin: 8% auto; padding: 25px 30px; border: 1px solid var(--border-color); width: 90%; max-width: 550px; border-radius: 14px; box-shadow: var(--shadow); position: relative; color: var(--text-primary); animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-close { color: var(--text-secondary); position: absolute; top: 12px; right: 18px; font-size: 26px; font-weight: bold; cursor: pointer; transition: color 0.2s; line-height: 1; }
+        .modal-close:hover, .modal-close:focus { color: var(--text-primary); text-decoration: none; }
+        .modal h2 { margin-top: 0; margin-bottom: 25px; color: var(--text-primary); font-size: 20px; font-weight: 600; text-align: center; }
+        .modal-body { font-size: 15px; line-height: 1.7; max-height: 65vh; overflow-y: auto; }
+        #summaryBody { background-color: var(--bg-secondary); padding: 15px; border-radius: var(--radius); border: 1px solid var(--border-color); white-space: pre-wrap; word-wrap: break-word; }
+        .modal .loading, .modal .error-message { text-align: center; padding: 20px; color: var(--text-secondary); font-size: 14px; }
+        .modal .error-message { color: var(--danger-color); font-weight: 500; background-color: rgba(var(--danger-color), 0.1); border: 1px solid var(--danger-color); border-radius: var(--radius); padding: 10px 15px; }
+
+        /* --- Settings Modal --- */
+        #settingsModal .control-group { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
+        #settingsModal label { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+        #settingsModal select, #settingsModal input[type="text"], #settingsModal input[type="password"], #settingsModal input[type="file"] { width: 100%; font-size: 14px; }
+        #settingsModal input[type="file"] { padding: 8px 10px; background-color: var(--input-bg); border: 1px dashed var(--border-color); cursor: pointer; }
+        #settingsModal input[type="file"]::-webkit-file-upload-button { background: var(--accent-primary); color: white; border: none; padding: 6px 12px; border-radius: var(--radius); cursor: pointer; margin-right: 10px; transition: background-color 0.2s; }
+        #settingsModal input[type="file"]::-webkit-file-upload-button:hover { background: var(--accent-hover); }
+        #settingsModal input[type="file"]::file-selector-button { background: var(--accent-primary); color: white; border: none; padding: 6px 12px; border-radius: var(--radius); cursor: pointer; margin-right: 10px; transition: background-color 0.2s; }
+        #settingsModal input[type="file"]::file-selector-button:hover { background: var(--accent-hover); }
+        #settingsModal input[readonly] { background-color: var(--bg-secondary); cursor: not-allowed; opacity: 0.8; }
+        #settingsModal .api-key-info { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+        #uploadFormModal { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+        #uploadFormModal button { align-self: flex-end; }
+        #settingsModal .button-container { margin-top: 25px; text-align: right; border-top: 1px solid var(--border-color); padding-top: 20px; }
+        #settingsModal .button-container button { background-color: var(--accent-primary); color: white; padding: 10px 18px; border-radius: var(--radius); font-size: 14px; font-weight: 500; }
+        #settingsModal .button-container button:hover { background-color: var(--accent-hover); }
+        #settingsModal button.secondary { background-color: var(--text-secondary); color: var(--bg-primary); }
+        #settingsModal button.secondary:hover { background-color: var(--text-primary); }
+        #settingsModal button.secondary:disabled { background-color: var(--text-secondary); opacity: 0.6; }
+
+        /* Tooltip */
+        [data-tooltip] { position: relative; cursor: help; }
+        [data-tooltip]::after { content: attr(data-tooltip); position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.85); color: white; padding: 6px 10px; border-radius: 6px; font-size: 12px; white-space: nowrap; opacity: 0; visibility: hidden; transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out; z-index: 10; }
+        [data-tooltip]:hover::after { opacity: 1; visibility: visible; }
+
+        /* Analysis Section */
+        .analysis-details summary { cursor: pointer; font-weight: 500; color: var(--text-secondary); margin-bottom: 0; padding: 10px 15px; border-radius: var(--radius); background-color: var(--bg-primary); box-shadow: var(--shadow); list-style: none; position: relative; transition: background-color 0.2s, border-radius 0.3s; border: 1px solid var(--border-color); }
+        .analysis-details summary::before { content: '▶'; position: absolute; left: 15px; top: 50%; transform: translateY(-50%) rotate(0deg); font-size: 0.7em; color: var(--text-secondary); transition: transform 0.2s ease-in-out; }
+        .analysis-details[open] summary::before { transform: translateY(-50%) rotate(90deg); }
+        .analysis-details summary::-webkit-details-marker { display: none; }
+        .analysis-details summary:hover { background-color: var(--input-bg); }
+        .analysis-details[open] summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; }
+        .controls-analysis-section { background-color: var(--bg-primary); border: 1px solid var(--border-color); border-top: none; border-bottom-left-radius: var(--radius); border-bottom-right-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-top: -1px; animation: slideDown 0.3s ease-out; overflow: hidden; }
+        @keyframes slideDown { from { max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; } to { max-height: 1000px; opacity: 1; padding-top: 20px; padding-bottom: 20px; } }
+        .output-card { background-color: var(--input-bg); border-radius: 8px; padding: 15px; margin-bottom: 15px; border: 1px solid var(--border-color); }
+        .output-card:last-child { margin-bottom: 0; }
+        .output-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary); }
+        .output-content { font-size: 14px; color: var(--text-primary); white-space: pre-wrap; word-wrap: break-word; line-height: 1.6; }
+        .output-details-list p { margin-bottom: 0.5em; }
+        .output-details-list p strong { margin-right: 0.5em; color: var(--text-secondary); }
+        .output-content pre { background-color: var(--bg-secondary); padding: 12px; border-radius: 6px; font-family: monospace; font-size: 0.9em; white-space: pre-wrap; max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); color: var(--text-secondary); margin-top: 5px; }
+        body.dark-mode .output-content pre { background-color: #111; border-color: #444; color: #bbb; }
+
+        /* Status Indicator */
+        .status-indicator { display: flex; align-items: center; font-size: 13px; color: var(--text-secondary); gap: 6px; }
+        .status-dot { width: 9px; height: 9px; border-radius: 50%; background-color: var(--success-color); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(var(--success-color), 0.7); } 70% { box-shadow: 0 0 0 5px rgba(var(--success-color), 0); } 100% { box-shadow: 0 0 0 0 rgba(var(--success-color), 0); } }
+
+        /* Responsive */
+        @media (max-width: 768px) { body { padding: 10px; max-width: 100%; margin: 10px auto; } .chat-section { height: calc(80vh - 120px); } .message { max-width: 90%; } .modal-content { width: 95%; margin: 5% auto; } header { padding-bottom: 10px; margin-bottom: 15px; } h1 { font-size: 22px; } .subtitle { font-size: 14px; } #themeToggle { top: 5px; font-size: 22px; } .top-control-bar { padding: 8px 10px; } .top-control-bar .button-group button { font-size: 13px; padding: 6px 10px; margin-left: 5px; } .top-control-bar .button-group button.icon-button { font-size: 18px; padding: 5px 7px; } .input-area-container textarea, .input-area-container button { font-size: 14px; min-height: 40px; height: 40px; } .input-area-container button { padding: 0 15px; } .modal h2 { font-size: 18px; } .modal-body { font-size: 14px; } }
+        @media (max-width: 480px) { .chat-section { height: calc(85vh - 100px); } .top-control-bar { flex-direction: column; align-items: flex-start; gap: 8px; } .top-control-bar .button-group { align-self: flex-end; } .message { font-size: 14px; } }
+
+        #taskStatus { font-size: 0.9em; color: var(--text-secondary); margin-top: 5px; text-align: center; display: none; padding: 5px; background-color: var(--input-bg); border-radius: var(--radius); border: 1px dashed var(--border-color); }
+        /* Flash message styling */
+        .flashes { list-style: none; padding: 0; margin: 0 0 15px 0; }
+        .flashes li { padding: 10px 15px; margin-bottom: 10px; border-radius: var(--radius); border: 1px solid transparent; }
+        .flashes li.error { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .flashes li.warning { background-color: #fff3cd; border-color: #ffeeba; color: #856404; }
+        .flashes li.info { background-color: #cce5ff; border-color: #b8daff; color: #004085; }
+        .flashes li.success { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+        body.dark-mode .flashes li.error { background-color: #5c2b2f; border-color: #e67e86; color: #f5c6cb; }
+        body.dark-mode .flashes li.warning { background-color: #664d00; border-color: #ffecb5; color: #ffeeba; }
+        body.dark-mode .flashes li.info { background-color: #003066; border-color: #7abaff; color: #cce5ff; }
+        body.dark-mode .flashes li.success { background-color: #0a3d15; border-color: #8fd79e; color: #d4edda; }
+    </style>
+    {# --- Inline CSS End --- #}
+
+    {# --- Library JS (CDN) --- #}
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, { delimiters: [{left: '$$', right: '$$', display: true},{left: '$', right: '$', display: false}], ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });">
+    </script>
+</head>
+<body>
+    <header> <h1>智能对话助手</h1> <p class="subtitle">与 AI 进行流畅交互 (异步)</p> <button id="themeToggle" title="切换主题">☀️</button> </header>
+     <div class="main-container">
+
+         {# --- Flash Messages --- #}
+         {% with messages = get_flashed_messages(with_categories=true) %}
+             {% if messages %}
+                 <ul class=flashes>
+                 {% for category, message in messages %}
+                     <li class="{{ category }}">{{ message }}</li>
+                 {% endfor %}
+                 </ul>
+             {% endif %}
+         {% endwith %}
+
+        {# --- Top Control Bar --- #}
+        <div class="top-control-bar">
+            <div class="status-indicator"> <div class="status-dot"></div> <span id="statusText">准备就绪</span> </div>
+            <div class="button-group">
+                <button id="summarizeBtn" title="生成对话总结">总结</button>
+                <button id="settingsBtn" class="icon-button" title="设置">⚙️</button>
+                <button id="clearChatBtn" class="danger" title="清空当前会话记录">清空</button>
+            </div>
+        </div>
+        {# --- Chat Section --- #}
+        <div class="chat-section">
+            <div class="chat-history" id="chatHistory">
+                {# --- 渲染历史记录 --- #}
+                {% for message in history %}
+                    {% if message.role == 'user' %}
+                        <div class="message user"><div>{{ message.content | safe }}</div></div>
+                    {% elif message.role == 'assistant' %}
+                        <div class="message assistant">
+                            <div class="content-wrapper" data-markdown-content="{{ message.content | e }}">{{ message.content | replace('\n', '<br>') | safe }}</div>
+                        </div>
+                    {% elif message.role == 'system' or message.role == 'file_upload' %}
+                        <div class="message {{ message.role }}"><div>{{ message.content | safe }}</div></div>
+                    {% endif %}
+                {% endfor %}
+                {# --- 显示可能存在的初始错误 --- #}
+                {% if error %}
+                 <div class="message assistant error-message-box" id="initialError">
+                     <div><strong>错误:</strong> {{ error }}</div>
+                 </div>
+                {% endif %}
+                {# --- 异步消息将通过JS动态添加 --- #}
+            </div>
+            {# --- Task Status Display --- #}
+            <div id="taskStatus" style="display: none;"> 正在处理您的请求... <span id="taskIdDisplay"></span> </div>
+            {# --- Input Area --- #}
+            <form method="post" class="input-area-container" id="messageForm" action="/">
+                <input type="hidden" name="session_deepseek_key" id="session_deepseek_key_hidden">
+                <input type="hidden" name="session_local_key" id="session_local_key_hidden">
+                <textarea id="user_input" name="user_input" rows="1" placeholder="请输入您想聊的话题..." required></textarea>
+                <button type="submit" id="sendButton">发送</button>
+            </form>
+        </div>
+        {# --- Analysis Section --- #}
+        <details class="analysis-details" id="analysisToggle">
+            <summary>对话处理分析 (点击展开/折叠)</summary>
+            <div class="controls-analysis-section" id="analysisContent">
+                {# --- 分析内容初始为空，或显示初始状态 --- #}
+                <div class="output-card"><div class="output-content" id="analysisPlaceholder">暂无分析数据。发送消息后将在此显示处理详情。</div></div>
+                 {# --- 如果后端渲染了分析内容 (非异步情况) --- #}
+                 {% if outputs or state %}
+                     <script>
+                         // Immediately update analysis if data is available on initial load
+                         document.addEventListener('DOMContentLoaded', () => {
+                             const initialOutputs = {{ outputs | tojson }};
+                             const initialState = {{ state | tojson }};
+                             const analysisPlaceholder = document.getElementById('analysisPlaceholder');
+                             if (analysisPlaceholder && (Object.keys(initialOutputs).length > 0 || initialState)) {
+                                 analysisPlaceholder.style.display = 'none';
+                                 updateAnalysisSection(initialOutputs, initialState); // Call JS function to populate
+                             }
+                         });
+                     </script>
+                 {% endif %}
+            </div>
+        </details>
+     </div>
+
+    {# --- Modals --- #}
+    <div id="settingsModal" class="modal">
+         <div class="modal-content">
+             <span class="modal-close" onclick="closeModal('settingsModal')">&times;</span>
+             <h2>设置</h2>
+             <div class="modal-body" style="background: none; border: none; padding: 0;">
+                 <div class="control-group">
+                     <label for="providerSelectModal">LLM 提供者:</label>
+                     <select id="providerSelectModal">
+                          {# Options populated by JS #}
+                     </select>
+                 </div>
+                 <div class="control-group">
+                     <label for="modelSelectModal">选择模型:</label>
+                     <select id="modelSelectModal">
+                         {# Options populated by JS #}
+                     </select>
+                 </div>
+                 <div id="apiKeySection" class="control-group" style="display: none;">
+                     <label for="apiKeyInput"><span id="apiKeyProviderLabel"></span> API Key:</label>
+                     <input type="password" id="apiKeyInput" placeholder="如果未全局配置，请在此输入">
+                     <span id="apiKeyInfo" class="api-key-info"></span>
+                 </div>
+                 <hr style="border: none; border-top: 1px solid var(--border-color); margin: 20px 0;">
+                 <div class="control-group">
+                     <label for="fileInputModal">上传对话历史 (.txt):</label>
+                     <form id="uploadFormModal" enctype="multipart/form-data" style="display: flex; align-items: center; gap: 10px;">
+                         <input type="file" name="file" id="fileInputModal" accept=".txt" style="flex-grow: 1;"/>
+                         <button type="submit" id="uploadBtnModal" class="secondary">上传</button>
+                     </form>
+                 </div>
+                 <div class="button-container">
+                     <button id="applySettingsBtn">应用设置</button>
+                 </div>
+             </div>
+         </div>
+     </div>
+    <div id="summaryModal" class="modal">
+         <div class="modal-content">
+             <span class="modal-close" onclick="closeModal('summaryModal')">&times;</span>
+             <h2>对话总结</h2>
+             <div id="summaryLoading" class="loading" style="display: none;">正在生成总结，请稍候...</div>
+             <div id="summaryError" class="error-message" style="display: none;"></div>
+             <div id="summaryBody" class="modal-body" style="display: none;">
+                  {# Summary content goes here #}
+             </div>
+         </div>
+     </div>
+
+
+    {# --- Inject Flask data BEFORE the main script --- #}
+    <script>
+        window.appConfig = {
+            providers: {{ providers | tojson }},
+            currentProvider: "{{ current_provider or 'None' }}",
+            currentModel: "{{ current_model or 'None' }}",
+            apiKeyStatus: {{ api_key_status | tojson }}
+        };
+    </script>
+
+    {# --- Inline JavaScript Start --- #}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM Loaded - Async Version");
+
+            // --- Global vars & Element Refs ---
+            const providersData = window.appConfig.providers || {};
+            let currentProvider = window.appConfig.currentProvider || 'None';
+            let currentModel = window.appConfig.currentModel || 'None';
+            let apiKeyStatus = window.appConfig.apiKeyStatus || {}; // 使其可更新
+            const body = document.body;
+            const themeToggle = document.getElementById('themeToggle');
+            const settingsBtn = document.getElementById('settingsBtn');
+            const settingsModal = document.getElementById('settingsModal');
+            const providerSelectModal = document.getElementById('providerSelectModal');
+            const modelSelectModal = document.getElementById('modelSelectModal');
+            const apiKeySection = document.getElementById('apiKeySection');
+            const apiKeyProviderLabel = document.getElementById('apiKeyProviderLabel');
+            const apiKeyInput = document.getElementById('apiKeyInput');
+            const apiKeyInfo = document.getElementById('apiKeyInfo');
+            const applySettingsBtn = document.getElementById('applySettingsBtn');
+            const chatHistory = document.getElementById('chatHistory');
+            const userInput = document.getElementById('user_input');
+            const sendButton = document.getElementById('sendButton');
+            const messageForm = document.getElementById('messageForm');
+            const analysisToggle = document.getElementById('analysisToggle');
+            const analysisContent = document.getElementById('analysisContent');
+            const analysisPlaceholder = document.getElementById('analysisPlaceholder');
+            const clearChatBtn = document.getElementById('clearChatBtn');
+            const summarizeBtn = document.getElementById('summarizeBtn');
+            const summaryModal = document.getElementById('summaryModal');
+            const summaryBody = document.getElementById('summaryBody');
+            const summaryLoading = document.getElementById('summaryLoading');
+            const summaryError = document.getElementById('summaryError');
+            const uploadFormModal = document.getElementById('uploadFormModal');
+            const uploadBtnModal = document.getElementById('uploadBtnModal');
+            const fileInputModal = document.getElementById('fileInputModal');
+            const statusText = document.getElementById('statusText');
+            const taskStatusDiv = document.getElementById('taskStatus');
+            const taskIdDisplaySpan = document.getElementById('taskIdDisplay');
+            const sessionDeepSeekKeyHidden = document.getElementById('session_deepseek_key_hidden');
+            const sessionLocalKeyHidden = document.getElementById('session_local_key_hidden');
+
+            let pollingInterval = null; // 轮询定时器ID
+            let currentPollingTaskId = null; // 当前轮询的任务ID
+            let isPolling = false; // 标记是否正在轮询
+
+            // === Function Definitions START ===
+
+            // --- Markdown/Katex/Code Rendering ---
+            let markedParser;
+            function initializeMarkdownRenderer() {
+                if (typeof marked !== 'undefined') {
+                    markedParser = new marked.Marked({ pedantic: false, gfm: true, breaks: false, sanitize: false, smartypants: false, xhtml: false });
+                    console.log("Marked.js initialized.");
+                    renderAllAssistantMessages(); // Render existing messages on init
+                } else { console.error("Marked.js library not loaded."); }
+            }
+            function renderSingleMessage(wrapperElement) {
+                if (!markedParser || !wrapperElement) return;
+                const markdownContent = wrapperElement.dataset.markdownContent;
+                if (markdownContent) {
+                    try {
+                        const htmlContent = markedParser.parse(markdownContent);
+                        wrapperElement.innerHTML = htmlContent;
+                        const codeBlocks = wrapperElement.querySelectorAll('pre code');
+                        if (codeBlocks.length > 0 && typeof Prism !== 'undefined') { codeBlocks.forEach(block => { Prism.highlightElement(block); }); }
+                        if (typeof renderMathInElement === 'function') {
+                            try { renderMathInElement(wrapperElement, { delimiters: [{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}], ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false }); } catch (e) { console.error("KaTeX err:", e); }
+                        }
+                    } catch (e) { console.error("Render err:", e); }
+                }
+            }
+            function renderAllAssistantMessages() {
+                 if (!markedParser) { console.warn("Marked parser not ready."); return; }
+                 document.querySelectorAll('.message.assistant .content-wrapper').forEach(renderSingleMessage);
+            }
+
+            // --- Theme switching ---
+            function applyTheme(theme) {
+                if (!body) return;
+                if (theme === 'dark') { body.classList.add('dark-mode'); if (themeToggle) { themeToggle.textContent = '🌙'; themeToggle.title = "切换到白天模式"; }}
+                else { body.classList.remove('dark-mode'); if (themeToggle) { themeToggle.textContent = '☀️'; themeToggle.title = "切换到黑夜模式"; }}
+            }
+
+             // --- Modals ---
+             function openModal(modalId) { const modal = document.getElementById(modalId); if(modal) modal.style.display = "block"; }
+             function closeModal(modalId) { const modal = document.getElementById(modalId); if(modal) modal.style.display = "none"; if (modalId === 'summaryModal') { summaryBody.innerHTML=''; summaryBody.style.display='none'; summaryError.style.display='none'; summaryError.textContent=''; summaryLoading.style.display='none';} }
+
+             // --- Settings ---
+             function populateProvidersModal() { if (!providerSelectModal) return; providerSelectModal.innerHTML=''; Object.keys(providersData).forEach(pName => { const option = document.createElement('option'); option.value=pName; option.textContent=pName; if(pName===currentProvider) option.selected=true; providerSelectModal.appendChild(option); }); }
+             function populateModelsModal(selectedProvider) { if (!modelSelectModal) return; modelSelectModal.innerHTML=''; const providerConf=providersData[selectedProvider]; if(providerConf && providerConf.models && providerConf.models.length>0){ modelSelectModal.disabled=false; providerConf.models.forEach(model => {const option=document.createElement('option'); option.value=model; option.textContent=model; if(model===currentModel && selectedProvider===currentProvider){option.selected=true;} modelSelectModal.appendChild(option);}); if(selectedProvider===currentProvider && !modelSelectModal.querySelector('option[selected]')){ if(modelSelectModal.options.length>0){modelSelectModal.options[0].selected=true;}}}else{ modelSelectModal.disabled=true; const option=document.createElement('option'); option.textContent="无可用模型"; option.value=""; modelSelectModal.appendChild(option);}}
+             function updateApiKeySection(selectedProvider) {
+                 if(!apiKeyStatus || !apiKeySection || !apiKeyProviderLabel || !apiKeyInput || !apiKeyInfo) { console.warn("API Key section elements missing"); return; }
+                 const providerStatus=apiKeyStatus[selectedProvider]; // 使用最新的全局 apiKeyStatus
+                 if(providerStatus && providerStatus.required){
+                     apiKeyProviderLabel.textContent=selectedProvider;
+                     apiKeySection.style.display='block';
+                     if(providerStatus.configured){apiKeyInput.type='text'; apiKeyInput.value='********'; apiKeyInput.readOnly=true; apiKeyInput.placeholder=''; apiKeyInfo.textContent='API Key 已在配置中设置。'; apiKeyInput.setAttribute('data-tooltip', '如需修改，请编辑 .env 文件或环境变量');}
+                     else {apiKeyInput.type='password'; apiKeyInput.value=''; apiKeyInput.readOnly=false; apiKeyInput.placeholder=`输入您的 ${selectedProvider} API Key (仅本次会话)`; apiKeyInfo.textContent='此 Key 仅在当前浏览器会话有效，不会被存储。'; apiKeyInput.removeAttribute('data-tooltip');}
+                } else {apiKeySection.style.display='none'; apiKeyInput.value='';}
+            }
+             // --- Chat Helpers ---
+             function scrollToBottom() { if (chatHistory) chatHistory.scrollTop = chatHistory.scrollHeight; }
+             function autoGrow(element) { if (!element) return; element.style.height = 'auto'; element.style.height = (element.scrollHeight) + 'px'; }
+
+            // --- Add Message to DOM ---
+            function addMessageToDOM(role, content, isError = false, markdownContent = null) {
+                if (!chatHistory) return;
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message', role);
+                if (isError) messageDiv.classList.add('error-message-box');
+
+                const contentDiv = document.createElement('div');
+                if (role === 'assistant' && !isError) {
+                    contentDiv.classList.add('content-wrapper');
+                    contentDiv.dataset.markdownContent = markdownContent !== null ? markdownContent : content.replace(/<br>/g, '\n');
+                    contentDiv.innerHTML = content; // 初始设置HTML (可能包含<br>)
+                    renderSingleMessage(contentDiv); // 渲染Markdown等
+                } else if (isError) {
+                    contentDiv.innerHTML = `<strong>错误:</strong> ${content}`;
+                }
+                else {
+                    // 对 User 消息也进行转义，防止注入
+                    const textNode = document.createTextNode(content);
+                    contentDiv.appendChild(textNode);
+                }
+                messageDiv.appendChild(contentDiv);
+                chatHistory.appendChild(messageDiv);
+                scrollToBottom();
+            }
+
+            // --- Update Analysis Section ---
+            function updateAnalysisSection(outputs, state) {
+                if (!analysisContent || !analysisPlaceholder) return;
+                analysisContent.innerHTML = ''; // 清空内容
+                analysisPlaceholder.style.display = 'none'; // 隐藏占位符
+
+                if (outputs || state) {
+                    // 显示状态
+                    if (state) {
+                        const stateCard = document.createElement('div'); stateCard.className = 'output-card';
+                        const stateTitle = document.createElement('div'); stateTitle.className = 'output-title'; stateTitle.textContent = '对话状态';
+                        const stateContent = document.createElement('div'); stateContent.className = 'output-content';
+                        stateContent.innerHTML = `
+                            轮次: ${state.session_turn_count ?? 'N/A'} | 用户类型: ${state.user_type ?? 'N/A'} | 情绪: <span class="math-inline">\{state\.user\_emotion ?? 'N/A'\} \(</span>{state.emotion_intensity?.toFixed(2) ?? 'N/A'}) | 危机: ${state.is_crisis ?? 'N/A'} <br>
+                            关键词: ${state.detected_keywords?.join(', ') || '无'} <br>
+                            认知扭曲: ${state.cognitive_distortions?.join(', ') || '无'}
+                        `;
+                        stateCard.appendChild(stateTitle); stateCard.appendChild(stateContent);
+                        analysisContent.appendChild(stateCard);
+                    }
+                    // 显示思考链
+                    if (outputs && outputs['思考链']) {
+                        const cotCard = document.createElement('div'); cotCard.className = 'output-card';
+                        const cotTitle = document.createElement('div'); cotTitle.className = 'output-title'; cotTitle.textContent = '思考链 (CoT)';
+                        const cotContent = document.createElement('div'); cotContent.className = 'output-content';
+                        const pre = document.createElement('pre'); pre.textContent = outputs['思考链']; // 直接用文本内容
+                        cotContent.appendChild(pre);
+                        cotCard.appendChild(cotTitle); cotCard.appendChild(cotContent);
+                        analysisContent.appendChild(cotCard);
+                    }
+                    // 显示模块详情
+                    const detailsCard = document.createElement('div'); detailsCard.className = 'output-card';
+                    const detailsTitle = document.createElement('div'); detailsTitle.className = 'output-title'; detailsTitle.textContent = '模块处理详情';
+                    const detailsContent = document.createElement('div'); detailsContent.className = 'output-content output-details-list';
+                    if (outputs) {
+                        for (const [key, value] of Object.entries(outputs)) {
+                            if (key !== '思考链' && key !== '会话报告' && key !== '模型' && key !== '历史') { // 过滤
+                                const p = document.createElement('p');
+                                const strong = document.createElement('strong'); strong.textContent = `${key.replace('输出', '')}:`;
+                                // 对 value 也使用 textNode，避免潜在的注入风险
+                                const textNode = document.createTextNode(` ${value}`);
+                                p.appendChild(strong); p.appendChild(textNode);
+                                detailsContent.appendChild(p);
+                            }
+                        }
+                         const pModel = document.createElement('p');
+                         const strongModel = document.createElement('strong'); strongModel.textContent = `使用的模型:`;
+                         const textModel = document.createTextNode(` ${outputs.模型 || '未知'}`);
+                         pModel.appendChild(strongModel); pModel.appendChild(textModel);
+                         detailsContent.appendChild(pModel);
+                    } else {
+                        detailsContent.textContent = "无模块处理详情。";
+                    }
+                    detailsCard.appendChild(detailsTitle); detailsCard.appendChild(detailsContent);
+                    analysisContent.appendChild(detailsCard);
+
+                } else {
+                    analysisPlaceholder.style.display = 'block'; // 无数据则显示占位符
+                }
+            }
+
+            // --- Task Polling ---
+            function stopPolling() { // 停止轮询
+                if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
+                if (taskStatusDiv) taskStatusDiv.style.display = 'none';
+                if (sendButton) { sendButton.disabled = false; sendButton.textContent = '发送'; }
+                isPolling = false;
+                currentPollingTaskId = null;
+                console.log("Polling stopped.");
+            }
+
+            function pollTaskResult(taskId) { // 轮询任务结果
+                if (!isPolling) return; // 如果已停止，则不再执行
+                console.log(`Polling task: ${taskId}`);
+                fetch(`/api/get_task_result/${taskId}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().catch(() => ({ ok: false, error: `HTTP ${response.status}` })).then(errData => {
+                                 throw new Error(errData.error || `HTTP ${response.status}`);
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log("Poll result:", data);
+                        if (!isPolling || taskId !== currentPollingTaskId) { console.log("Polling stopped or task changed during fetch."); return; }
+
+                        if (data.state === 'SUCCESS') {
+                            stopPolling();
+                            if (data.result && data.result.success) {
+                                if (data.result.response) { // 成功且有回复
+                                    const responsePlain = data.result.response.replace(/<br>/g, '\n');
+                                    addMessageToDOM('assistant', data.result.response, false, responsePlain);
+                                } else { console.warn("任务成功但没有 response 内容?"); }
+                                updateAnalysisSection(data.result.outputs, data.result.state); // 更新分析区域
+                            } else { // 成功但业务逻辑失败
+                                const errorMsg = data.result?.message || data.result?.error || '处理失败';
+                                addMessageToDOM('assistant', errorMsg, true); // 显示错误消息
+                                updateAnalysisSection(data.result?.outputs, data.result?.state);
+                            }
+                        } else if (data.state === 'FAILURE') {
+                            stopPolling();
+                            const errorMsg = data.error || '任务执行失败';
+                            addMessageToDOM('assistant', errorMsg, true); // 显示错误消息
+                            updateAnalysisSection(null, null); // 清空或显示错误状态
+                        } else if (data.state === 'PROGRESS' || data.state === 'PENDING') {
+                            // 更新状态文本，继续轮询
+                            if (taskStatusDiv) taskStatusDiv.textContent = `处理中 (${data.status || data.state})...`;
+                        } else { // 其他未知状态
+                             stopPolling();
+                             addMessageToDOM('system', `任务状态未知: ${data.state}`);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Polling error:', error);
+                        stopPolling();
+                        addMessageToDOM('assistant', `查询处理结果时出错: ${error.message || error}`, true);
+                    });
+            }
+
+            function startPolling(taskId) { // 开始轮询
+                if (isPolling) stopPolling(); // 如果已在轮询，先停止旧的
+                console.log(`Starting polling for task: ${taskId}`);
+                isPolling = true;
+                currentPollingTaskId = taskId;
+                if (taskStatusDiv) { taskStatusDiv.style.display = 'block'; taskStatusDiv.textContent = '正在处理您的请求...';}
+                if (taskIdDisplaySpan) taskIdDisplaySpan.textContent = `(ID: ${taskId})`;
+                if (sendButton) { sendButton.disabled = true; sendButton.textContent = '处理中'; }
+
+                // 立即执行一次，然后设置定时器
+                pollTaskResult(taskId);
+                pollingInterval = setInterval(() => pollTaskResult(taskId), 2000); // 每2秒轮询一次
+            }
+
+
+            // === Function Definitions END ===
+
+            // === Event Listeners START ===
+            // --- Theme Toggle ---
+            if (themeToggle) themeToggle.addEventListener('click', () => { const newTheme = body.classList.contains('dark-mode') ? 'light' : 'dark'; localStorage.setItem('theme', newTheme); applyTheme(newTheme); });
+            // --- Modals ---
+            if (settingsBtn) settingsBtn.addEventListener('click', () => openModal('settingsModal'));
+            window.addEventListener('click', (event) => { if (event.target == settingsModal) closeModal('settingsModal'); if (event.target == summaryModal) closeModal('summaryModal'); });
+            document.querySelectorAll('.modal-close').forEach(btn => { btn.onclick = () => closeModal(btn.closest('.modal').id); });
+            // --- Settings Listeners ---
+            if (providerSelectModal) providerSelectModal.addEventListener('change', function() { const selectedProvider = this.value; populateModelsModal(selectedProvider); updateApiKeySection(selectedProvider); });
+            if (applySettingsBtn) applySettingsBtn.addEventListener('click', function() {
+                 const selectedProvider=providerSelectModal.value;
+                 const selectedModel=modelSelectModal.value||'';
+                 const apiKeyEntered=apiKeyInput.value.trim();
+                 let keyUpdateNeeded=false; let keyToSet="";
+                 const currentProviderStatus = apiKeyStatus[selectedProvider];
+                 if(currentProviderStatus && currentProviderStatus.required && !currentProviderStatus.configured && apiKeyEntered && apiKeyInput.type === 'password'){ keyUpdateNeeded=true; keyToSet=apiKeyEntered; }
+
+                 applySettingsBtn.disabled=true; applySettingsBtn.textContent="应用中...";
+                 let keyPromise = Promise.resolve({ok: true});
+
+                 if(keyUpdateNeeded){
+                      keyPromise=fetch('/api/set_session_api_key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider:selectedProvider,api_key:keyToSet})})
+                                  .then(r=>r.json());
+                 }
+                 let modelPromise=fetch('/api/set_model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider:selectedProvider,model:selectedModel})})
+                                 .then(r=>r.json());
+
+                 Promise.all([keyPromise, modelPromise]).then(([keyResult, modelResult])=>{
+                     let messages=[]; let modelUpdateSuccess=false;
+                     if(!keyResult.ok) messages.push(`Key设置失败: ${keyResult.error||'?'}`);
+                     if(modelResult.ok){ messages.push(modelResult.msg||"模型设置成功！"); modelUpdateSuccess=true; }
+                     else { messages.push(`模型设置失败: ${modelResult.error||'?'}`); }
+                     alert(messages.join('\n'));
+
+                     if(modelUpdateSuccess){
+                         currentProvider=selectedProvider;
+                         currentModel=modelSelectModal.disabled || !selectedModel ? 'None' : selectedModel;
+                         if(statusText) statusText.textContent=`当前模型: <span class="math-inline">\{currentProvider\}/</span>{currentModel==='None'?'未选择':currentModel}`;
+
+                         fetch('/api/get_api_key_status') // 请求最新状态
+                             .then(r => r.json())
+                             .then(data => { if(data.ok && data.status) { apiKeyStatus = data.status; updateApiKeySection(currentProvider); }}) // 更新并重新渲染
+                             .catch(e => console.error('无法获取API Key状态:', e));
+
+                         closeModal('settingsModal');
+                     }
+                 }).catch(e=>{alert('应用设置出错: '+e); console.error(e);}).finally(()=>{applySettingsBtn.disabled=false; applySettingsBtn.textContent="应用设置";});
+             });
+            // --- Upload Listener ---
+            if (uploadFormModal) uploadFormModal.addEventListener('submit', function(event) {
+                 event.preventDefault();
+                 const formData=new FormData(uploadFormModal);
+                 if(!fileInputModal?.files?.length){alert('请选择TXT文件。'); return;}
+                 if(uploadBtnModal){uploadBtnModal.disabled=true; uploadBtnModal.textContent='上传中...';}
+                 fetch('/api/upload_txt',{method:'POST',body:formData})
+                     .then(r=>r.json())
+                     .then(d=>{
+                         alert(d.msg || '处理完成');
+                         if(d.ok){
+                             closeModal('settingsModal');
+                             addMessageToDOM('system', d.msg); // 添加系统消息到聊天区
+                         } else if (d.error) { alert('上传失败: '+d.error); }
+                     })
+                     .catch(err=>{alert('上传异常: '+err); console.error(err);})
+                     .finally(()=>{
+                         if(uploadBtnModal){uploadBtnModal.disabled=false; uploadBtnModal.textContent='上传';}
+                         if(fileInputModal) fileInputModal.value='';
+                     });
+            });
+
+             // --- Chat Submit Listener ---
+             if (messageForm) {
+                  messageForm.addEventListener('submit', function(event) {
+                      event.preventDefault(); // 阻止页面跳转
+                      if (isPolling) { alert("请等待上一个请求处理完成。"); return; }
+                      const userInputText = userInput.value.trim();
+                      if (!userInputText) { userInput.focus(); return; }
+
+                      // 清除旧的错误或状态
+                      document.querySelectorAll('.flashes li').forEach(el => el.remove());
+                      if(analysisPlaceholder) analysisPlaceholder.style.display = 'block';
+                      if(analysisContent) analysisContent.innerHTML = '';
+
+                      // 1. 将用户消息添加到 DOM (转义内容)
+                      addMessageToDOM('user', userInputText);
+                      userInput.value = ''; // 清空输入框
+                      autoGrow(userInput); // 重置高度
+
+                      // 2. 准备临时 Key 数据
+                      let tempKeyData = {};
+                      if (apiKeySection && apiKeyInput && apiKeySection.style.display !== 'none' && !apiKeyInput.readOnly && apiKeyInput.value.trim() && apiKeyInput.type === 'password') {
+                           tempKeyData[currentProvider] = apiKeyInput.value.trim();
+                      }
+
+                      // 3. 发送异步请求到主路由
+                      const formData = new FormData();
+                      formData.append('user_input', userInputText);
+                      // 添加临时Key到FormData
+                      if (tempKeyData["DeepSeek"]) formData.append('session_deepseek_key', tempKeyData["DeepSeek"]);
+                      if (tempKeyData["Local"]) formData.append('session_local_key', tempKeyData["Local"]);
+
+                      // 禁用发送按钮
+                      if (sendButton) { sendButton.disabled = true; sendButton.textContent = '...'; }
+                      if (taskStatusDiv) { taskStatusDiv.textContent = '发送请求...'; taskStatusDiv.style.display = 'block';}
+
+                      fetch('/', { method: 'POST', body: formData })
+                         .then(response => {
+                             if (!response.ok) { // 处理HTTP错误
+                                // 尝试读取JSON错误体，失败则用文本
+                                return response.json().catch(()=>response.text()).then(errorData => {
+                                    let errorMsg = `启动任务失败: ${response.status}`;
+                                    if (typeof errorData === 'string') errorMsg += ` - ${errorData}`;
+                                    else if (errorData && errorData.message) errorMsg += ` - ${errorData.message}`;
+                                    else if (errorData && errorData.error) errorMsg += ` - ${errorData.error}`;
+                                    throw new Error(errorMsg);
+                                });
+                             }
+                             return response.json(); // 解析 JSON 响应
+                         })
+                         .then(data => {
+                             if (data && data.task_id) { startPolling(data.task_id); } // 开始轮询
+                             else if (data && !data.success && data.message) { throw new Error(data.message); } // 后端直接返回错误
+                             else { throw new Error("无法获取任务ID"); }
+                         })
+                         .catch(error => {
+                             console.error('发送消息或启动任务出错:', error);
+                             addMessageToDOM('assistant', `发送失败: ${error.message || error}`, true); // 在聊天区显示错误
+                             stopPolling(); // 确保停止轮询并启用按钮
+                         });
+                  });
+             } else { console.error("Message form not found!"); }
+
+             // --- Enter Key Listener ---
+             if (userInput) {
+                 userInput.addEventListener('keydown', (e) => {
+                     if (e.key === 'Enter' && !e.shiftKey) {
+                         e.preventDefault();
+                         if (userInput.value.trim() && sendButton && !sendButton.disabled) { // 仅在输入不为空且按钮可用时触发
+                             messageForm.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));
+                         }
+                     }
+                 });
+             }
+
+             // --- Other Button Listeners (Clear, Summarize) ---
+             if (clearChatBtn) clearChatBtn.addEventListener('click', function() {
+                  if(!confirm("确定要清空当前会话的所有记录吗？")) return;
+                  stopPolling(); // 清空前停止任何正在进行的轮询
+                  fetch('/api/clear_chat',{method:'POST'})
+                      .then(r=>r.json())
+                      .then(d=>{
+                          alert(d.msg||'已清空');
+                          if(d.ok){
+                              if(chatHistory) chatHistory.innerHTML = '';
+                              if(analysisContent) analysisContent.innerHTML = '';
+                              if(analysisPlaceholder) analysisPlaceholder.style.display = 'block';
+                          } else if (d.error) { alert(`清空失败: ${d.error}`); }
+                      }).catch(e=>{alert('清空出错:'+e);console.error(e);});
+             });
+             if (summarizeBtn) summarizeBtn.addEventListener('click', function() {
+                openModal('summaryModal');
+                summaryLoading.style.display = 'block'; summaryBody.style.display = 'none'; summaryError.style.display = 'none';
+                let summaryPollInterval = null; // 用于总结轮询的 interval ID
+                fetch('/api/summarize_chat', {method:'POST'})
+                    .then(res => { if(!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+                    .then(data => {
+                        if (data.ok && data.task_id) {
+                            summaryLoading.textContent = `总结任务已启动 (ID: ${data.task_id})...`;
+                            // 轮询总结任务结果
+                            summaryPollInterval = setInterval(() => {
+                                fetch(`/api/get_task_result/${data.task_id}`)
+                                .then(r => { if(!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+                                .then(taskData => {
+                                    if (taskData.state === 'SUCCESS') {
+                                        clearInterval(summaryPollInterval); summaryLoading.style.display = 'none';
+                                        if (taskData.result && taskData.result.ok && taskData.result.summary) {
+                                            summaryBody.textContent = taskData.result.summary; summaryBody.style.display = 'block';
+                                        } else { summaryError.textContent = '总结失败: ' + (taskData.result?.error || '未知错误'); summaryError.style.display = 'block'; }
+                                    } else if (taskData.state === 'FAILURE') {
+                                        clearInterval(summaryPollInterval); summaryLoading.style.display = 'none';
+                                        summaryError.textContent = '总结任务失败: ' + (taskData.error || '未知错误'); summaryError.style.display = 'block';
+                                    } else if (taskData.state === 'PENDING' || taskData.state === 'PROGRESS') {
+                                        summaryLoading.textContent = `总结生成中 (${taskData.status || taskData.state})...`;
+                                    } else { clearInterval(summaryPollInterval); summaryLoading.style.display = 'none'; summaryError.textContent = `总结任务状态未知: ${taskData.state}`; summaryError.style.display = 'block'; }
+                                })
+                                .catch(e => { clearInterval(summaryPollInterval); summaryLoading.style.display = 'none'; summaryError.textContent = '查询总结结果出错: ' + e.message; summaryError.style.display = 'block'; });
+                            }, 2500);
+                        } else { throw new Error(data.error || '无法启动总结任务'); }
+                    })
+                    .catch(e => { summaryLoading.style.display = 'none'; summaryError.textContent = '请求总结出错: ' + e.message; summaryError.style.display = 'block'; console.error(e); });
+             });
+
+             // --- Analysis Toggle ---
+             if (analysisToggle) analysisToggle.addEventListener('toggle', (event) => { localStorage.setItem('analysisOpen', event.target.open ? 'true' : 'false'); if(event.target.open){setTimeout(scrollToBottom, 350);} });
+
+            // === Event Listeners END ===
+
+            // === Initial Setup START ===
+            console.log("Running initial setup...");
+            const initialTheme = localStorage.getItem('theme') || (window.matchMedia?.('(prefers-color-scheme: dark)')?.matches ? 'dark' : 'light');
+            applyTheme(initialTheme);
+            populateProvidersModal();
+            populateModelsModal(currentProvider);
+            updateApiKeySection(currentProvider); // 使用最新的 apiKeyStatus
+            if (userInput) autoGrow(userInput);
+            if (localStorage.getItem('analysisOpen') === 'true' && analysisToggle) { analysisToggle.open = true; }
+            if (statusText) { statusText.textContent = `当前模型: <span class="math-inline">\{currentProvider\}/</span>{currentModel === 'None' ? '未选择' : currentModel}`; }
+            initializeMarkdownRenderer();
+            setTimeout(scrollToBottom, 150);
+            console.log("Initial setup complete.");
+            // === Initial Setup END ===
+
+        }); // End DOMContentLoaded
+    </script>
+    {# --- Inline JavaScript End --- #}
+
+</body>
+</html>

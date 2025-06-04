@@ -1,0 +1,25 @@
+flask==3.0.2
+langgraph==0.0.32
+langchain-core==0.1.33
+requests==2.31.0
+python-dotenv==1.0.1
+jieba
+marked
+flask
+selenium
+pillow
+# ./requirements.txt
+# 文件路径: ./requirements.txt
+Flask>=2.0 # Web框架
+python-dotenv>=0.19 # 加载.env文件
+requests>=2.25 # 发送HTTP请求
+redis>=4.0 # Redis客户端
+celery>=5.0 # 异步任务队列
+jieba>=0.42 # 中文分词 (来自 preprocessor)
+# 可选: 用于 Celery Broker/Backend (如果不用 Redis)
+# kombu>=5.0 # (Celery依赖)
+# amqp>=5.0 # (RabbitMQ C库) 或 py-amqp
+
+# 生产环境部署建议
+# gunicorn # WSGI服务器
+# eventlet 或 gevent # (如果使用Flask-SocketIO)
